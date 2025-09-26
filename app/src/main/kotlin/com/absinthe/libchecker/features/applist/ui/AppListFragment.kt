@@ -1,5 +1,6 @@
 package com.absinthe.libchecker.features.applist.ui
 
+import android.Manifest
 import android.content.Context
 import android.content.res.Configuration
 import android.graphics.Color
@@ -85,6 +86,7 @@ class AppListFragment :
 
   private lateinit var layoutManager: RecyclerView.LayoutManager
   private lateinit var dumpAppsInfoResultLauncher: ActivityResultLauncher<String>
+  private lateinit var queryAllPackagesPermissionLauncher: ActivityResultLauncher<String>
   private var dumpAppsInfoAsMarkDown = false
 
   override fun init() {
@@ -174,6 +176,11 @@ class AppListFragment :
         setOnDisplayedChildChangedListener {
           appAdapter.setSpaceFooterView()
         }
+        setOnClickListener {
+          if (::queryAllPackagesPermissionLauncher.isInitialized && displayedChild == VF_REJECT) {
+            queryAllPackagesPermissionLauncher.launch(Manifest.permission.QUERY_ALL_PACKAGES)
+          }
+        }
       }
     }
 
@@ -193,6 +200,15 @@ class AppListFragment :
             }.onFailure { t ->
               Timber.e(t)
             }
+          }
+        }
+      }
+    queryAllPackagesPermissionLauncher =
+      registerForActivityResult(ActivityResultContracts.RequestPermission()) { isGranted ->
+        if (isGranted) {
+          homeViewModel.shouldCheckQueryAllPackagesPermissionOnResume = false
+          if (isAdded) {
+            initApps()
           }
         }
       }
@@ -560,6 +576,7 @@ class AppListFragment :
       Timber.d("flip to $page")
       binding.vfContainer.displayedChild = page
     }
+    homeViewModel.shouldCheckQueryAllPackagesPermissionOnResume = page == VF_REJECT
     if (page == VF_INIT) {
       menu?.findItem(R.id.search)?.isVisible = false
       binding.initView.loadingView.resumeAnimation()
